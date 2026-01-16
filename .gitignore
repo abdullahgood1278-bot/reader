@@ -74,3 +74,9 @@ dist-ssr/
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
+
+# Deployment
+.vercel
+.railway
+jwt_secret.txt
+.jwt_secret_backup.txt
