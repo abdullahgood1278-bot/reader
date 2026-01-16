@@ -3,7 +3,10 @@ import { booksAPI, preferencesAPI, statisticsAPI } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import { useReaderStore } from '../stores/readerStore';
 import { RSVPReader } from '../components/Reader/RSVPReader';
-import { Upload, BookOpen, Settings, TrendingUp, LogOut, Book } from 'lucide-react';
+import { SettingsPanel } from '../components/Settings/SettingsPanel';
+import { BookmarkManager } from '../components/Reader/BookmarkManager';
+import { GoalsManager } from '../components/Goals/GoalsManager';
+import { Upload, BookOpen, Settings, TrendingUp, LogOut, Book, Target, Bookmark, Moon, Sun } from 'lucide-react';
 import type { Book, UserStatistics } from '../types';
 
 export const Dashboard: React.FC = () => {
@@ -15,6 +18,9 @@ export const Dashboard: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [activeTab, setActiveTab] = useState<'books' | 'stats' | 'settings'>('books');
+  const [showSettings, setShowSettings] = useState(false);
+  const [showGoals, setShowGoals] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -88,32 +94,94 @@ export const Dashboard: React.FC = () => {
     return `${minutes}m`;
   };
 
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    // Apply dark mode class to document
+    document.documentElement.classList.toggle('dark', !darkMode);
+  };
+
   if (selectedBook) {
-    return <RSVPReader book={selectedBook} onClose={() => setSelectedBook(null)} />;
+    return (
+      <>
+        <RSVPReader book={selectedBook} onClose={() => setSelectedBook(null)} />
+        {showSettings && (
+          <SettingsPanel onClose={() => setShowSettings(false)} />
+        )}
+        {showGoals && (
+          <GoalsManager onClose={() => setShowGoals(false)} />
+        )}
+      </>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-      <nav className="bg-black bg-opacity-30 backdrop-blur-sm border-b border-white border-opacity-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <BookOpen className="text-white" size={32} />
-              <h1 className="text-2xl font-bold text-white">Speed Reader</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-white">Welcome, {user?.username}!</span>
-              <button
-                onClick={logout}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-              >
-                <LogOut size={18} />
-                Logout
-              </button>
+    <div className={`min-h-screen ${darkMode ? 'dark' : ''}`}>
+      <div className={`min-h-screen transition-colors duration-300 ${
+        darkMode 
+          ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900' 
+          : 'bg-gradient-to-br from-gray-100 via-blue-50 to-purple-50'
+      }`}>
+        <nav className={`backdrop-blur-sm border-b transition-colors ${
+          darkMode 
+            ? 'bg-black bg-opacity-30 border-white border-opacity-10' 
+            : 'bg-white bg-opacity-80 border-gray-200'
+        }`}>
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <BookOpen className={darkMode ? 'text-white' : 'text-gray-800'} size={32} />
+                <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                  Speed Reader
+                </h1>
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={toggleDarkMode}
+                  className={`p-2 rounded-lg transition ${
+                    darkMode 
+                      ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
+                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                  title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                >
+                  {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+                <button
+                  onClick={() => setShowGoals(true)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                    darkMode 
+                      ? 'bg-green-600 text-white hover:bg-green-700' 
+                      : 'bg-green-500 text-white hover:bg-green-600'
+                  }`}
+                >
+                  <Target size={18} />
+                  Goals
+                </button>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                    darkMode 
+                      ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                      : 'bg-indigo-500 text-white hover:bg-indigo-600'
+                  }`}
+                >
+                  <Settings size={18} />
+                  Settings
+                </button>
+                <span className={darkMode ? 'text-white' : 'text-gray-700'}>
+                  Welcome, {user?.username}!
+                </span>
+                <button
+                  onClick={logout}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                >
+                  <LogOut size={18} />
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex gap-4 mb-8">
@@ -122,7 +190,9 @@ export const Dashboard: React.FC = () => {
             className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
               activeTab === 'books'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white bg-opacity-10 text-white hover:bg-opacity-20'
+                : darkMode 
+                  ? 'bg-white bg-opacity-10 text-white hover:bg-opacity-20'
+                  : 'bg-white bg-opacity-60 text-gray-700 hover:bg-opacity-80'
             }`}
           >
             <Book size={20} />
@@ -133,7 +203,9 @@ export const Dashboard: React.FC = () => {
             className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
               activeTab === 'stats'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white bg-opacity-10 text-white hover:bg-opacity-20'
+                : darkMode 
+                  ? 'bg-white bg-opacity-10 text-white hover:bg-opacity-20'
+                  : 'bg-white bg-opacity-60 text-gray-700 hover:bg-opacity-80'
             }`}
           >
             <TrendingUp size={20} />
@@ -144,7 +216,9 @@ export const Dashboard: React.FC = () => {
             className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition ${
               activeTab === 'settings'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white bg-opacity-10 text-white hover:bg-opacity-20'
+                : darkMode 
+                  ? 'bg-white bg-opacity-10 text-white hover:bg-opacity-20'
+                  : 'bg-white bg-opacity-60 text-gray-700 hover:bg-opacity-80'
             }`}
           >
             <Settings size={20} />
@@ -154,10 +228,20 @@ export const Dashboard: React.FC = () => {
 
         {activeTab === 'books' && (
           <div>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 mb-8">
-              <h2 className="text-2xl font-bold text-white mb-4">Upload New Book</h2>
+            <div className={`backdrop-blur-sm rounded-lg p-6 mb-8 transition-colors ${
+              darkMode 
+                ? 'bg-white bg-opacity-10' 
+                : 'bg-white bg-opacity-80 border border-gray-200'
+            }`}>
+              <h2 className={`text-2xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                Upload New Book
+              </h2>
               <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition">
+                <label className={`flex items-center gap-2 px-6 py-3 rounded-lg cursor-pointer transition ${
+                  darkMode 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}>
                   <Upload size={20} />
                   {isUploading ? 'Uploading...' : 'Choose File'}
                   <input
@@ -168,7 +252,7 @@ export const Dashboard: React.FC = () => {
                     className="hidden"
                   />
                 </label>
-                <span className="text-white text-sm">
+                <span className={darkMode ? 'text-white text-sm' : 'text-gray-600 text-sm'}>
                   Supported: PDF, EPUB, TXT, DOC, DOCX (max 50MB)
                 </span>
               </div>
@@ -241,49 +325,132 @@ export const Dashboard: React.FC = () => {
 
         {activeTab === 'stats' && statistics && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
-              <h3 className="text-gray-300 text-sm mb-2">Total Words Read</h3>
-              <p className="text-3xl font-bold text-white">
+            <div className={`backdrop-blur-sm rounded-lg p-6 transition-colors ${
+              darkMode ? 'bg-white bg-opacity-10' : 'bg-white bg-opacity-80 border border-gray-200'
+            }`}>
+              <h3 className={`text-sm mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Total Words Read
+              </h3>
+              <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                 {statistics.total_words_read?.toLocaleString() || 0}
               </p>
             </div>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
-              <h3 className="text-gray-300 text-sm mb-2">Books Completed</h3>
-              <p className="text-3xl font-bold text-white">{statistics.total_books_completed || 0}</p>
+            <div className={`backdrop-blur-sm rounded-lg p-6 transition-colors ${
+              darkMode ? 'bg-white bg-opacity-10' : 'bg-white bg-opacity-80 border border-gray-200'
+            }`}>
+              <h3 className={`text-sm mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Books Completed
+              </h3>
+              <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                {statistics.total_books_completed || 0}
+              </p>
             </div>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
-              <h3 className="text-gray-300 text-sm mb-2">Reading Time</h3>
-              <p className="text-3xl font-bold text-white">
+            <div className={`backdrop-blur-sm rounded-lg p-6 transition-colors ${
+              darkMode ? 'bg-white bg-opacity-10' : 'bg-white bg-opacity-80 border border-gray-200'
+            }`}>
+              <h3 className={`text-sm mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Reading Time
+              </h3>
+              <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                 {formatTime(statistics.total_reading_time || 0)}
               </p>
             </div>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
-              <h3 className="text-gray-300 text-sm mb-2">Average Speed</h3>
-              <p className="text-3xl font-bold text-white">{statistics.average_wpm || 0} WPM</p>
+            <div className={`backdrop-blur-sm rounded-lg p-6 transition-colors ${
+              darkMode ? 'bg-white bg-opacity-10' : 'bg-white bg-opacity-80 border border-gray-200'
+            }`}>
+              <h3 className={`text-sm mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Average Speed
+              </h3>
+              <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                {statistics.average_wpm || 0} WPM
+              </p>
             </div>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
-              <h3 className="text-gray-300 text-sm mb-2">Current Streak</h3>
-              <p className="text-3xl font-bold text-white">{statistics.current_streak || 0} days</p>
+            <div className={`backdrop-blur-sm rounded-lg p-6 transition-colors ${
+              darkMode ? 'bg-white bg-opacity-10' : 'bg-white bg-opacity-80 border border-gray-200'
+            }`}>
+              <h3 className={`text-sm mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Current Streak
+              </h3>
+              <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                {statistics.current_streak || 0} days
+              </p>
             </div>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
-              <h3 className="text-gray-300 text-sm mb-2">Longest Streak</h3>
-              <p className="text-3xl font-bold text-white">{statistics.longest_streak || 0} days</p>
+            <div className={`backdrop-blur-sm rounded-lg p-6 transition-colors ${
+              darkMode ? 'bg-white bg-opacity-10' : 'bg-white bg-opacity-80 border border-gray-200'
+            }`}>
+              <h3 className={`text-sm mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Longest Streak
+              </h3>
+              <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                {statistics.longest_streak || 0} days
+              </p>
             </div>
           </div>
         )}
 
         {activeTab === 'settings' && (
-          <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-white mb-6">Reading Preferences</h2>
-            <div className="text-white space-y-4">
-              <p>Settings panel coming soon!</p>
-              <p className="text-gray-300">
-                Configure your default reading speed, themes, and more in the reader.
-              </p>
+          <div className={`backdrop-blur-sm rounded-lg p-6 transition-colors ${
+            darkMode ? 'bg-white bg-opacity-10' : 'bg-white bg-opacity-80 border border-gray-200'
+          }`}>
+            <h2 className={`text-2xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              Reading Preferences
+            </h2>
+            <div className={`space-y-6 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Quick Actions</h3>
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <Settings size={20} />
+                    Open Full Settings Panel
+                  </button>
+                  <button
+                    onClick={() => setShowGoals(true)}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  >
+                    <Target size={20} />
+                    Manage Reading Goals
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Quick Settings</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span>Dark Mode</span>
+                      <button
+                        onClick={toggleDarkMode}
+                        className={`p-2 rounded-lg transition ${
+                          darkMode 
+                            ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-4 border-t border-gray-300 dark:border-gray-600">
+                <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Configure your default reading speed, themes, and more in the full settings panel.
+                </p>
+              </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Modal Overlays */}
+      {showSettings && (
+        <SettingsPanel onClose={() => setShowSettings(false)} />
+      )}
+
+      {showGoals && (
+        <GoalsManager onClose={() => setShowGoals(false)} />
+      )}
     </div>
   );
 };

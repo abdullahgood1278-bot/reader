@@ -54,6 +54,34 @@ export class BookmarkController {
     }
   }
 
+  static async updateBookmark(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const bookmarkId = parseInt(req.params.id);
+      const { note } = req.body;
+
+      const result = await query(
+        `UPDATE bookmarks 
+        SET note = $1
+        WHERE id = $2 AND user_id = $3
+        RETURNING *`,
+        [note, bookmarkId, userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Bookmark not found' });
+      }
+
+      res.json({
+        message: 'Bookmark updated successfully',
+        bookmark: result.rows[0],
+      });
+    } catch (error) {
+      console.error('Update bookmark error:', error);
+      res.status(500).json({ error: 'Failed to update bookmark' });
+    }
+  }
+
   static async deleteBookmark(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
