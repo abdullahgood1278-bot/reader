@@ -1,0 +1,36 @@
+# Backend - not deployed to Vercel (use Railway/Render instead)
+backend/
+
+# Development files
+node_modules/
+.env
+.env.local
+*.log
+.DS_Store
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+coverage/
+
+# Documentation (optional - remove if you want docs on Vercel)
+*.md
+!README.md
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Git
+.git/
+.gitignore
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

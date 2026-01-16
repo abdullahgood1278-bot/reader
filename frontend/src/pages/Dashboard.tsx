@@ -442,6 +442,7 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
       </div>
+      </div>
 
       {/* Modal Overlays */}
       {showSettings && (

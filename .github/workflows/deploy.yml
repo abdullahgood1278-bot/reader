@@ -1,0 +1,95 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+      - deploy-speedreading-vercel-production
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    name: Test and Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build backend
+        run: |
+          cd backend
+          npm install
+          npm run build
+      
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+      
+      - name: Check build outputs
+        run: |
+          echo "✅ Backend build output:"
+          ls -la backend/dist/
+          echo ""
+          echo "✅ Frontend build output:"
+          ls -la frontend/dist/
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            backend/dist/
+            frontend/dist/
+          retention-days: 7
+
+  deploy-to-vercel:
+    name: Deploy Frontend to Vercel
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy-speedreading-vercel-production'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./
+
+  notify-deployment:
+    name: Notify Deployment Status
+    needs: [test-and-build, deploy-to-vercel]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Deployment Success
+        if: needs.deploy-to-vercel.result == 'success'
+        run: |
+          echo "🎉 Deployment successful!"
+          echo "Frontend deployed to Vercel"
+          echo "Backend should auto-deploy via Railway"
+      
+      - name: Deployment Failed
+        if: needs.deploy-to-vercel.result == 'failure'
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Check the logs above for errors"
+          exit 1

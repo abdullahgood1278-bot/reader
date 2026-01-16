@@ -247,18 +247,73 @@ Track your reading journey:
 - Current and longest reading streaks
 - Session history
 
-## Development
+## Deployment
 
-### Build for Production
+### Quick Start - Deploy to Production
+
+Deploy your Speed Reader app to production in under 30 minutes:
+
+**Frontend**: Vercel (Global CDN, automatic HTTPS)  
+**Backend**: Railway (Easy deployment, PostgreSQL included)
+
+```bash
+# See the quick start guide
+cat VERCEL_QUICKSTART.md
+```
+
+**📚 Deployment Guides:**
+- **[VERCEL_QUICKSTART.md](./VERCEL_QUICKSTART.md)** - Deploy in 30 minutes (recommended)
+- **[VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)** - Complete step-by-step guide
+- **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - Pre-deployment checklist
+- **[ENV_VARIABLES.md](./ENV_VARIABLES.md)** - Environment variables reference
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Alternative deployment platforms
+
+### Local Production Build
+
+Build for production locally:
 
 ```bash
 npm run build
 ```
 
-### Run Production Build
+Run production build:
 
 ```bash
 npm start
+```
+
+## Development
+
+### Development Commands
+
+```bash
+# Run both backend and frontend in development mode
+npm run dev
+
+# Run backend only
+npm run dev:backend
+
+# Run frontend only
+npm run dev:frontend
+
+# Build for production
+npm run build
+
+# Run production build
+npm start
+
+# Verify setup
+npm run verify
+```
+
+### Helper Scripts
+
+```bash
+# Production deployment helper
+./deploy-production.sh
+
+# Quick setup
+./quickstart.sh
 ```
 
 ## Contributing

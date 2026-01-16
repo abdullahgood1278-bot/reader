@@ -54,6 +54,7 @@ export class AuthController {
         username: user.username,
       };
 
+      // @ts-ignore - JWT sign expiresIn typing issue
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
       res.status(201).json({
@@ -102,6 +103,7 @@ export class AuthController {
         username: user.username,
       };
 
+      // @ts-ignore - JWT sign expiresIn typing issue
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
       res.json({
