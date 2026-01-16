@@ -6,7 +6,7 @@ export const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, isLoading } = useAuthStore();
+  const { login, isLoading, continueAsGuest } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -19,6 +19,11 @@ export const LoginForm: React.FC = () => {
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed');
     }
+  };
+
+  const handleContinueAsGuest = () => {
+    continueAsGuest();
+    navigate('/dashboard');
   };
 
   return (
@@ -69,6 +74,15 @@ export const LoginForm: React.FC = () => {
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Logging in...' : 'Login'}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleContinueAsGuest}
+            disabled={isLoading}
+            className="w-full bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Continue as Guest
           </button>
         </form>
 
