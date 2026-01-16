@@ -76,6 +76,71 @@ export class StatisticsController {
     }
   }
 
+  static async getGoals(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+
+      const result = await query(
+        'SELECT * FROM reading_goals WHERE user_id = $1 ORDER BY created_at DESC',
+        [userId]
+      );
+
+      res.json({ goals: result.rows });
+    } catch (error) {
+      console.error('Get goals error:', error);
+      res.status(500).json({ error: 'Failed to fetch goals' });
+    }
+  }
+
+  static async deleteGoal(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const goalId = parseInt(req.params.id);
+
+      const result = await query(
+        'DELETE FROM reading_goals WHERE id = $1 AND user_id = $2 RETURNING *',
+        [goalId, userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Goal not found' });
+      }
+
+      res.json({ message: 'Goal deleted successfully' });
+    } catch (error) {
+      console.error('Delete goal error:', error);
+      res.status(500).json({ error: 'Failed to delete goal' });
+    }
+  }
+
+  static async updateGoal(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const goalId = parseInt(req.params.id);
+      const { goal_type, target_value, period, start_date, end_date } = req.body;
+
+      const result = await query(
+        `UPDATE reading_goals 
+        SET goal_type = $1, target_value = $2, period = $3, start_date = $4, end_date = $5
+        WHERE id = $6 AND user_id = $7
+        RETURNING *`,
+        [goal_type, target_value, period, start_date, end_date, goalId, userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Goal not found' });
+      }
+
+      res.json({
+        message: 'Goal updated successfully',
+        goal: result.rows[0],
+      });
+    } catch (error) {
+      console.error('Update goal error:', error);
+      res.status(500).json({ error: 'Failed to update goal' });
+    }
+  }
+
   static async updateUserStatistics(
     userId: number,
     wordsRead: number,

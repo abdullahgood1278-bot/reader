@@ -53,10 +53,14 @@ router.put('/preferences', authenticate, PreferencesController.updatePreferences
 router.get('/statistics', authenticate, StatisticsController.getStatistics);
 router.post('/statistics/sessions', authenticate, StatisticsController.createSession);
 router.post('/statistics/goals', authenticate, StatisticsController.createGoal);
+router.get('/statistics/goals', authenticate, StatisticsController.getGoals);
 router.put('/statistics/goals/:id', authenticate, StatisticsController.updateGoalProgress);
+router.put('/statistics/goals/:id/update', authenticate, StatisticsController.updateGoal);
+router.delete('/statistics/goals/:id', authenticate, StatisticsController.deleteGoal);
 
 router.post('/bookmarks', authenticate, BookmarkController.createBookmark);
 router.get('/bookmarks', authenticate, BookmarkController.getBookmarks);
+router.put('/bookmarks/:id', authenticate, BookmarkController.updateBookmark);
 router.delete('/bookmarks/:id', authenticate, BookmarkController.deleteBookmark);
 
 router.get('/health', (_req, res) => {

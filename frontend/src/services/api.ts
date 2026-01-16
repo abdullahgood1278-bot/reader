@@ -82,8 +82,23 @@ export const statisticsAPI = {
   }) =>
     api.post<{ goal: ReadingGoal }>('/statistics/goals', goal),
   
-  updateGoal: (id: number, current_value: number, completed: boolean) =>
+  getGoals: () =>
+    api.get<{ goals: ReadingGoal[] }>('/statistics/goals'),
+  
+  updateGoalProgress: (id: number, current_value: number, completed: boolean) =>
     api.put(`/statistics/goals/${id}`, { current_value, completed }),
+  
+  updateGoal: (id: number, goal: {
+    goal_type: string;
+    target_value: number;
+    period: string;
+    start_date: string;
+    end_date: string;
+  }) =>
+    api.put(`/statistics/goals/${id}/update`, goal),
+  
+  deleteGoal: (id: number) =>
+    api.delete(`/statistics/goals/${id}`),
 };
 
 export const bookmarksAPI = {
@@ -92,6 +107,9 @@ export const bookmarksAPI = {
   
   getAll: (bookId?: number) =>
     api.get<{ bookmarks: Bookmark[] }>('/bookmarks', { params: { book_id: bookId } }),
+  
+  update: (id: number, bookmark: { note: string }) =>
+    api.put(`/bookmarks/${id}`, bookmark),
   
   delete: (id: number) =>
     api.delete(`/bookmarks/${id}`),

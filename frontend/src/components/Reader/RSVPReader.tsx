@@ -1,7 +1,10 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useReaderStore } from '../../stores/readerStore';
 import { booksAPI, statisticsAPI } from '../../services/api';
-import { Play, Pause, SkipBack, SkipForward, BookmarkPlus } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, BookmarkPlus, Settings, Target } from 'lucide-react';
+import { BookmarkManager } from './BookmarkManager';
+import { SettingsPanel } from '../Settings/SettingsPanel';
+import { GoalsManager } from '../Goals/GoalsManager';
 import type { Book } from '../../types';
 
 interface RSVPReaderProps {
@@ -28,6 +31,8 @@ export const RSVPReader: React.FC<RSVPReaderProps> = ({ book, onClose }) => {
   const [words, setWords] = useState<string[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [showBookmark, setShowBookmark] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showGoals, setShowGoals] = useState(false);
 
   useEffect(() => {
     if (book.content) {
@@ -149,6 +154,11 @@ export const RSVPReader: React.FC<RSVPReaderProps> = ({ book, onClose }) => {
     setIsPlaying(false);
     await handleEndSession(false);
     onClose();
+  };
+
+  const handleBookmarkNavigation = (wordIndex: number) => {
+    setCurrentWordIndex(wordIndex);
+    setShowBookmark(false);
   };
 
   const getHighlightedWord = (word: string): JSX.Element => {
@@ -302,7 +312,7 @@ export const RSVPReader: React.FC<RSVPReaderProps> = ({ book, onClose }) => {
             </button>
           </div>
 
-          <div className="flex items-center justify-center gap-6 text-white">
+          <div className="flex items-center justify-between gap-6 text-white">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setWpm(wpm - 50)}
@@ -321,12 +331,58 @@ export const RSVPReader: React.FC<RSVPReaderProps> = ({ book, onClose }) => {
               </button>
             </div>
 
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowBookmark(!showBookmark)}
+                className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                title="Bookmarks"
+              >
+                <BookmarkPlus size={20} />
+              </button>
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                title="Settings"
+              >
+                <Settings size={20} />
+              </button>
+              <button
+                onClick={() => setShowGoals(!showGoals)}
+                className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                title="Reading Goals"
+              >
+                <Target size={20} />
+              </button>
+            </div>
+
             <div className="text-sm opacity-80">
               Words read: {wordsReadInSession}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal Overlays */}
+      {showBookmark && (
+        <BookmarkManager
+          bookId={book.id}
+          currentWordIndex={currentWordIndex}
+          onNavigate={handleBookmarkNavigation}
+          onClose={() => setShowBookmark(false)}
+        />
+      )}
+
+      {showSettings && (
+        <SettingsPanel
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {showGoals && (
+        <GoalsManager
+          onClose={() => setShowGoals(false)}
+        />
+      )}
     </div>
   );
 };
