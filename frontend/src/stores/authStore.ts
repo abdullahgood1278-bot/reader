@@ -6,9 +6,11 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isGuest: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
+  continueAsGuest: () => void;
   logout: () => void;
   checkAuth: () => Promise<void>;
 }
@@ -17,6 +19,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: localStorage.getItem('token'),
   isAuthenticated: !!localStorage.getItem('token'),
+  isGuest: !!localStorage.getItem('isGuest'),
   isLoading: false,
   
   login: async (email: string, password: string) => {
@@ -40,16 +43,34 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { user, token } = response.data;
       
       localStorage.setItem('token', token);
-      set({ user, token, isAuthenticated: true, isLoading: false });
+      localStorage.removeItem('isGuest');
+      set({ user, token, isAuthenticated: true, isGuest: false, isLoading: false });
     } catch (error) {
       set({ isLoading: false });
       throw error;
     }
   },
   
+  continueAsGuest: () => {
+    const guestId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const guestUser = {
+      id: guestId,
+      email: null,
+      username: `Guest_${Math.random().toString(36).substr(2, 6)}`,
+      created_at: new Date().toISOString(),
+    };
+    
+    const guestToken = btoa(JSON.stringify({ guestId, timestamp: Date.now() }));
+    
+    localStorage.setItem('token', guestToken);
+    localStorage.setItem('isGuest', 'true');
+    set({ user: guestUser, token: guestToken, isAuthenticated: true, isGuest: true, isLoading: false });
+  },
+  
   logout: () => {
     localStorage.removeItem('token');
-    set({ user: null, token: null, isAuthenticated: false });
+    localStorage.removeItem('isGuest');
+    set({ user: null, token: null, isAuthenticated: false, isGuest: false });
   },
   
   checkAuth: async () => {
