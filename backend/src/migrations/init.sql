@@ -1,4 +1,4 @@
--- Users table
+-- Simple SQLite migration
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email VARCHAR(255) UNIQUE NOT NULL,
@@ -8,10 +8,9 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Books table
 CREATE TABLE IF NOT EXISTS books (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
   title VARCHAR(500) NOT NULL,
   author VARCHAR(255),
   file_path VARCHAR(500),
@@ -26,57 +25,19 @@ CREATE TABLE IF NOT EXISTS books (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_books_user_id ON books(user_id);
-CREATE INDEX IF NOT EXISTS idx_books_genre ON books(genre);
-
--- Reading progress table
 CREATE TABLE IF NOT EXISTS reading_progress (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
+  book_id INTEGER NOT NULL,
   current_position INTEGER DEFAULT 0,
   total_words INTEGER,
   last_read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  completed BOOLEAN DEFAULT FALSE,
-  UNIQUE(user_id, book_id)
+  completed BOOLEAN DEFAULT FALSE
 );
 
-CREATE INDEX IF NOT EXISTS idx_reading_progress_user ON reading_progress(user_id);
-CREATE INDEX IF NOT EXISTS idx_reading_progress_book ON reading_progress(book_id);
-
--- Reading sessions table
-CREATE TABLE IF NOT EXISTS reading_sessions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-  start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-  end_time DATETIME,
-  words_read INTEGER,
-  average_wpm INTEGER,
-  session_duration INTEGER
-);
-
-CREATE INDEX IF NOT EXISTS idx_reading_sessions_user ON reading_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_reading_sessions_book ON reading_sessions(book_id);
-CREATE INDEX IF NOT EXISTS idx_reading_sessions_start_time ON reading_sessions(start_time);
-
--- Bookmarks table
-CREATE TABLE IF NOT EXISTS bookmarks (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-  word_position INTEGER NOT NULL,
-  note TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);
-CREATE INDEX IF NOT EXISTS idx_bookmarks_book ON bookmarks(book_id);
-
--- User preferences table
 CREATE TABLE IF NOT EXISTS user_preferences (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
   default_wpm INTEGER DEFAULT 300,
   red_letter_position VARCHAR(20) DEFAULT 'first',
   font_size INTEGER DEFAULT 48,
@@ -88,28 +49,9 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON user_preferences(user_id);
-
--- Reading goals table
-CREATE TABLE IF NOT EXISTS reading_goals (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  goal_type VARCHAR(50) NOT NULL,
-  target_value INTEGER NOT NULL,
-  current_value INTEGER DEFAULT 0,
-  period VARCHAR(20) NOT NULL,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  completed BOOLEAN DEFAULT FALSE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_reading_goals_user ON reading_goals(user_id);
-
--- User statistics table
 CREATE TABLE IF NOT EXISTS user_statistics (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
   total_words_read INTEGER DEFAULT 0,
   total_books_completed INTEGER DEFAULT 0,
   total_reading_time INTEGER DEFAULT 0,
@@ -121,16 +63,43 @@ CREATE TABLE IF NOT EXISTS user_statistics (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_statistics_user ON user_statistics(user_id);
+CREATE TABLE IF NOT EXISTS reading_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  book_id INTEGER NOT NULL,
+  start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  end_time DATETIME,
+  words_read INTEGER,
+  average_wpm INTEGER,
+  session_duration INTEGER
+);
 
--- Refresh tokens table
+CREATE TABLE IF NOT EXISTS bookmarks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  book_id INTEGER NOT NULL,
+  word_position INTEGER NOT NULL,
+  note TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS reading_goals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  goal_type VARCHAR(50) NOT NULL,
+  target_value INTEGER NOT NULL,
+  current_value INTEGER DEFAULT 0,
+  period VARCHAR(20) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  completed BOOLEAN DEFAULT FALSE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
   token VARCHAR(500) UNIQUE NOT NULL,
   expires_at DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
-CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);

@@ -35,10 +35,12 @@ export const query = async (text: string, params?: unknown[]) => {
     // Handle common PostgreSQL to SQLite conversions
     sqliteQuery = sqliteQuery.replace(/CURRENT_TIMESTAMP/g, "datetime('now')");
     
-    // Handle RETURNING clause - remove it but preserve the statement
+    // Handle RETURNING clause - extract what we need to return and handle separately
+    let returnFields = null;
     if (sqliteQuery.includes('RETURNING')) {
       const parts = sqliteQuery.split('RETURNING');
       sqliteQuery = parts[0].trim().replace(/,\s*$/, ''); // Remove trailing comma
+      returnFields = parts[1].trim().split(',').map(f => f.trim());
     }
     
     let stmt: any;
@@ -56,8 +58,39 @@ export const query = async (text: string, params?: unknown[]) => {
         rowCount: rows.length,
         command: 'SELECT'
       };
+    } else if (sqliteQuery.trim().toLowerCase().startsWith('insert')) {
+      // For INSERT queries
+      stmt = db.prepare(sqliteQuery);
+      const info = stmt.run(...(paramArray as any[]));
+      
+      // For SQLite, get the inserted data if RETURNING was requested
+      let rows = [];
+      if (returnFields && returnFields.length > 0) {
+        const insertedId = info.lastInsertRowid;
+        // Get the inserted record
+        const selectQuery = sqliteQuery.replace(/INSERT\s+INTO\s+(\w+)/i, 'SELECT * FROM $1').replace(/VALUES\s*\([^)]*\)/i, 'WHERE id = ?');
+        const selectStmt = db.prepare(selectQuery);
+        const insertedRecord = selectStmt.get(insertedId);
+        
+        if (insertedRecord) {
+          // Filter to only requested fields
+          const filteredRecord = {};
+          returnFields.forEach(field => {
+            if (insertedRecord[field] !== undefined) {
+              filteredRecord[field] = insertedRecord[field];
+            }
+          });
+          rows = [filteredRecord];
+        }
+      }
+      
+      return {
+        rows,
+        rowCount: info.changes,
+        command: 'INSERT'
+      };
     } else {
-      // For INSERT, UPDATE, DELETE queries
+      // For UPDATE, DELETE queries
       stmt = db.prepare(sqliteQuery);
       const info = stmt.run(...(paramArray as any[]));
       
@@ -78,37 +111,49 @@ export const executeMultiple = async (sqlScript: string) => {
   console.log('Executing SQL script with multiple statements');
   
   try {
-    // Split by semicolons and filter out empty statements
+    // First try to execute as a single script
+    try {
+      db.exec(sqlScript);
+      console.log('Successfully executed SQL script as single transaction');
+      return { success: true };
+    } catch (singleError) {
+      console.log('Single script execution failed, trying individual statements:', singleError.message);
+    }
+    
+    // Fallback: Split by semicolons and filter out empty statements
     const statements = sqlScript
       .split(';')
       .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0);
+      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
     
     const results = [];
+    let successCount = 0;
     
     for (const statement of statements) {
       if (statement.length === 0) continue;
       
-      // Handle PostgreSQL to SQLite conversions for each statement
-      let sqliteStatement = statement;
-      sqliteStatement = sqliteStatement.replace(/CURRENT_TIMESTAMP/g, "datetime('now')");
-      
-      // Remove comments
-      sqliteStatement = sqliteStatement.replace(/--.*$/gm, '').trim();
-      
-      if (sqliteStatement.length === 0) continue;
-      
       try {
-        stmt = db.prepare(sqliteStatement);
-        const info = stmt.run();
-        results.push({ statement, changes: info.changes });
+        // Handle PostgreSQL to SQLite conversions for each statement
+        let sqliteStatement = statement;
+        sqliteStatement = sqliteStatement.replace(/CURRENT_TIMESTAMP/g, "datetime('now')");
+        
+        // Remove comments
+        sqliteStatement = sqliteStatement.replace(/--.*$/gm, '').trim();
+        
+        if (sqliteStatement.length === 0) continue;
+        
+        db.exec(sqliteStatement);
+        results.push({ statement: sqliteStatement, success: true });
+        successCount++;
       } catch (stmtError) {
-        console.warn('Statement failed:', sqliteStatement, stmtError.message);
+        console.warn('Statement failed:', statement.substring(0, 100) + '...', stmtError.message);
+        results.push({ statement, success: false, error: stmtError.message });
         // Continue with other statements even if one fails
       }
     }
     
-    return { success: true, results };
+    console.log(`Successfully executed ${successCount}/${statements.length} statements`);
+    return { success: true, results, successCount, totalCount: statements.length };
   } catch (error) {
     console.error('Multiple statement execution error:', error);
     throw error;

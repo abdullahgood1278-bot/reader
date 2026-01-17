@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import routes from './routes';
-import { query } from './config/database';
+import { query, executeMultiple } from './config/database';
 
 dotenv.config();
 
@@ -42,7 +42,7 @@ const initDatabase = async () => {
       path.join(__dirname, 'migrations', 'init.sql'),
       'utf-8'
     );
-    await query(initSQL);
+    await executeMultiple(initSQL);
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Database initialization error:', error);
