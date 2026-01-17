@@ -10,6 +10,21 @@ import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
+const DEFAULT_MAX_FILE_SIZE = 209715200;
+
+const getMaxFileSizeBytes = () => {
+  const parsed = Number.parseInt(process.env.MAX_FILE_SIZE || '', 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return DEFAULT_MAX_FILE_SIZE;
+};
+
+const formatBytesAsMB = (bytes: number) => {
+  const mb = bytes / (1024 * 1024);
+  return `${Math.round(mb)}MB`;
+};
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, process.env.UPLOAD_DIR || './uploads');
@@ -23,12 +38,12 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800'),
+    fileSize: getMaxFileSizeBytes(),
   },
   fileFilter: (_req, file, cb) => {
     const allowedTypes = ['.pdf', '.epub', '.txt', '.doc', '.docx'];
     const ext = path.extname(file.originalname).toLowerCase();
-    
+
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
@@ -37,11 +52,48 @@ const upload = multer({
   },
 });
 
+router.get('/config', (_req, res) => {
+  res.json({
+    maxFileSize: getMaxFileSizeBytes(),
+    maxFileSizeLabel: formatBytesAsMB(getMaxFileSizeBytes()),
+  });
+});
+
 router.post('/auth/register', AuthController.register);
 router.post('/auth/login', AuthController.login);
 router.get('/auth/me', AuthController.me);
 
-router.post('/books/upload', authenticate, upload.single('file'), BookController.uploadBook);
+router.post(
+  '/books/upload',
+  authenticate,
+  (req, res, next) => {
+    upload.single('file')(req, res, (err: any) => {
+      if (!err) return next();
+
+      const maxBytes = getMaxFileSizeBytes();
+      const maxLabel = formatBytesAsMB(maxBytes);
+
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            error: `File is too large. Maximum upload size is ${maxLabel}.`,
+            maxFileSize: maxBytes,
+          });
+        }
+
+        return res.status(400).json({
+          error: `Upload error: ${err.message}`,
+        });
+      }
+
+      return res.status(400).json({
+        error: err?.message || 'Upload failed',
+      });
+    });
+  },
+  BookController.uploadBook
+);
+router.post('/books/text', authenticate, BookController.createFromText);
 router.get('/books', authenticate, BookController.getBooks);
 router.get('/books/:id', authenticate, BookController.getBook);
 router.delete('/books/:id', authenticate, BookController.deleteBook);

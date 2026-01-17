@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { booksAPI, preferencesAPI, statisticsAPI } from '../services/api';
+import { booksAPI, preferencesAPI, statisticsAPI, configAPI } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import { useReaderStore } from '../stores/readerStore';
 import { RSVPReader } from '../components/Reader/RSVPReader';
 import { SettingsPanel } from '../components/Settings/SettingsPanel';
 import { BookmarkManager } from '../components/Reader/BookmarkManager';
 import { GoalsManager } from '../components/Goals/GoalsManager';
-import { Upload, BookOpen, Settings, TrendingUp, LogOut, Book, Target, Bookmark, Moon, Sun } from 'lucide-react';
+import { TextInputModal } from '../components/TextInput/TextInputModal';
+import { Upload, BookOpen, Settings, TrendingUp, LogOut, Book, Target, Bookmark, Moon, Sun, FileText } from 'lucide-react';
 import type { Book, UserStatistics } from '../types';
 
 export const Dashboard: React.FC = () => {
@@ -17,6 +18,8 @@ export const Dashboard: React.FC = () => {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [maxFileSizeLabel, setMaxFileSizeLabel] = useState<string>('');
+  const [showTextModal, setShowTextModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'books' | 'stats' | 'settings'>('books');
   const [showSettings, setShowSettings] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
@@ -28,15 +31,17 @@ export const Dashboard: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [booksRes, prefsRes, statsRes] = await Promise.all([
+      const [booksRes, prefsRes, statsRes, configRes] = await Promise.all([
         booksAPI.getAll(),
         preferencesAPI.get(),
         statisticsAPI.get(),
+        configAPI.get().catch(() => ({ data: { maxFileSizeLabel: '200MB' } })),
       ]);
 
       setBooks(booksRes.data.books);
       setPreferences(prefsRes.data.preferences);
       setStatistics(statsRes.data.statistics);
+      setMaxFileSizeLabel(configRes.data.maxFileSizeLabel);
     } catch (error) {
       console.error('Failed to load data:', error);
     }
@@ -57,7 +62,11 @@ export const Dashboard: React.FC = () => {
       await loadData();
       e.target.value = '';
     } catch (error: any) {
-      setUploadError(error.response?.data?.error || 'Upload failed');
+      if (error?.response?.status === 413) {
+        setUploadError(error.response?.data?.error || `File is too large. Maximum upload size is ${maxFileSizeLabel || '200MB'}.`);
+      } else {
+        setUploadError(error.response?.data?.error || 'Upload failed. Please try again.');
+      }
     } finally {
       setIsUploading(false);
     }
@@ -82,6 +91,16 @@ export const Dashboard: React.FC = () => {
       await loadData();
     } catch (error) {
       console.error('Failed to delete book:', error);
+    }
+  };
+
+  const handleTextSubmit = async (title: string, author: string, text: string) => {
+    try {
+      await booksAPI.createFromText(title, author, text);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to create book from text:', error);
+      throw error;
     }
   };
 
@@ -234,16 +253,16 @@ export const Dashboard: React.FC = () => {
                 : 'bg-white bg-opacity-80 border border-gray-200'
             }`}>
               <h2 className={`text-2xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                Upload New Book
+                Add New Content
               </h2>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <label className={`flex items-center gap-2 px-6 py-3 rounded-lg cursor-pointer transition ${
                   darkMode 
                     ? 'bg-blue-600 text-white hover:bg-blue-700' 
                     : 'bg-blue-500 text-white hover:bg-blue-600'
                 }`}>
                   <Upload size={20} />
-                  {isUploading ? 'Uploading...' : 'Choose File'}
+                  {isUploading ? 'Uploading...' : 'Upload File'}
                   <input
                     type="file"
                     accept=".pdf,.epub,.txt,.doc,.docx"
@@ -252,8 +271,19 @@ export const Dashboard: React.FC = () => {
                     className="hidden"
                   />
                 </label>
+                <button
+                  onClick={() => setShowTextModal(true)}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg transition ${
+                    darkMode 
+                      ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                      : 'bg-purple-500 text-white hover:bg-purple-600'
+                  }`}
+                >
+                  <FileText size={20} />
+                  Paste Text
+                </button>
                 <span className={darkMode ? 'text-white text-sm' : 'text-gray-600 text-sm'}>
-                  Supported: PDF, EPUB, TXT, DOC, DOCX (max 50MB)
+                  Supported: PDF, EPUB, TXT, DOC, DOCX (max {maxFileSizeLabel || '200MB'})
                 </span>
               </div>
               {uploadError && (
@@ -451,6 +481,13 @@ export const Dashboard: React.FC = () => {
 
       {showGoals && (
         <GoalsManager onClose={() => setShowGoals(false)} />
+      )}
+
+      {showTextModal && (
+        <TextInputModal
+          onClose={() => setShowTextModal(false)}
+          onSubmit={handleTextSubmit}
+        />
       )}
     </div>
   );
