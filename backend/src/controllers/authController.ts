@@ -3,11 +3,76 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query } from '../config/database';
 import { JWTPayload } from '../types';
+import { TextExtractor } from '../utils/textExtractor';
+import { GenreDetector } from '../utils/genreDetector';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
+const DEFAULT_SAMPLE_CHAPTER_TEXT = `Zorian's eyes abruptly shot open, and he jerked upright, his heart hammering painfully in his chest.
+
+For a moment he just sat there, trying to remember where he was. His room. His bed. Morning light filtering in through the window. The familiar creak of the old house.
+
+He took a slow breath and forced himself to relax. It had been a dream — one of those unsettling, vivid ones that clung to the mind even after waking. He rubbed his eyes, then stared at his hands as if expecting them to be stained with something he couldn’t name.
+
+Outside, the city was already awake. Carriages rattled over cobblestone streets, and the distant shouts of vendors drifted up from the market. Somewhere down the hall, his little sister was humming off-key.
+
+Zorian swung his legs over the side of the bed. He could feel the weight of responsibility pressing down on him, the same way it always did when a new day began. School. Expectations. The constant sense that he was falling behind, that everyone else had some secret map of life he’d never been given.
+
+He stood, crossed the room, and looked out the window. The sky was clear and bright. Ordinary. Safe. He let out a breath he hadn’t realized he was holding.
+
+A knock came from the door. His mother’s voice followed, warm and firm at the same time. "Zorian, are you awake? Breakfast is almost ready."
+
+He hesitated, then answered, "Yeah. I’m up."
+
+He turned back toward the bed, and for the briefest instant he felt a dizzying lurch — as if the room had shifted under him — and then it was gone.
+
+When he looked down again, he realized he was no longer standing.
+
+...he was on his side`;
+
 export class AuthController {
+  static async createDefaultSampleBook(userId: number) {
+    try {
+      const cleanedText = TextExtractor.cleanText(DEFAULT_SAMPLE_CHAPTER_TEXT);
+      const wordCount = TextExtractor.countWords(cleanedText);
+      const title = "Mother of Learning - Sample Chapter";
+      const author = "Domagoj Kurmaic";
+      const genre = GenreDetector.detectGenre(cleanedText, title);
+      const backgroundTheme = GenreDetector.generateBackgroundTheme(genre);
+
+      const result = await query(
+        `INSERT INTO books 
+        (user_id, title, author, file_path, file_type, file_size, content, word_count, genre, background_theme) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+        RETURNING id`,
+        [
+          userId,
+          title,
+          author,
+          null,
+          'text',
+          cleanedText.length,
+          cleanedText,
+          wordCount,
+          genre,
+          JSON.stringify(backgroundTheme),
+        ]
+      );
+
+      const bookId = result.rows[0].id;
+
+      await query(
+        'INSERT INTO reading_progress (user_id, book_id, total_words) VALUES ($1, $2, $3)',
+        [userId, bookId, wordCount]
+      );
+
+      console.log(`Default sample book created for user ${userId}`);
+    } catch (error) {
+      console.error('Failed to create default sample book:', error);
+    }
+  }
+
   static async register(req: Request, res: Response) {
     try {
       const { email, username, password } = req.body;
@@ -47,6 +112,8 @@ export class AuthController {
         'INSERT INTO user_statistics (user_id) VALUES ($1)',
         [user.id]
       );
+
+      await AuthController.createDefaultSampleBook(user.id);
 
       const payload: JWTPayload = {
         userId: user.id,

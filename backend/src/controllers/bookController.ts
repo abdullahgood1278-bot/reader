@@ -184,4 +184,70 @@ export class BookController {
       res.status(500).json({ error: 'Failed to update progress' });
     }
   }
+
+  static async createFromText(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const { title, author, text } = req.body;
+
+      if (!text) {
+        return res.status(400).json({ error: 'Text content is required' });
+      }
+
+      const cleanedText = TextExtractor.cleanText(text);
+      const wordCount = TextExtractor.countWords(cleanedText);
+
+      const bookTitle = title || 'Pasted Text';
+      const bookAuthor = author || 'Unknown';
+
+      const genre = GenreDetector.detectGenre(cleanedText, bookTitle);
+      const backgroundTheme = GenreDetector.generateBackgroundTheme(genre);
+
+      const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
+      if (unsplashKey) {
+        const imageUrl = await GenreDetector.getUnsplashImage(genre, unsplashKey);
+        if (imageUrl) {
+          backgroundTheme.imageUrl = imageUrl;
+          backgroundTheme.type = 'image';
+        }
+      }
+
+      const result = await query(
+        `INSERT INTO books 
+        (user_id, title, author, file_path, file_type, file_size, content, word_count, genre, background_theme) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+        RETURNING id, title, author, file_type, word_count, genre, background_theme, created_at`,
+        [
+          userId,
+          bookTitle,
+          bookAuthor,
+          null,
+          'text',
+          cleanedText.length,
+          cleanedText,
+          wordCount,
+          genre,
+          JSON.stringify(backgroundTheme),
+        ]
+      );
+
+      const book = result.rows[0];
+
+      await query(
+        'INSERT INTO reading_progress (user_id, book_id, total_words) VALUES ($1, $2, $3)',
+        [userId, book.id, wordCount]
+      );
+
+      res.status(201).json({
+        message: 'Book created successfully',
+        book: {
+          ...book,
+          background_theme: JSON.parse(book.background_theme),
+        },
+      });
+    } catch (error) {
+      console.error('Create from text error:', error);
+      res.status(500).json({ error: 'Failed to create book from text' });
+    }
+  }
 }

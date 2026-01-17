@@ -29,11 +29,18 @@ export const authAPI = {
     api.get<{ user: User }>('/auth/me'),
 };
 
+export const configAPI = {
+  get: () => api.get<{ maxFileSize: number; maxFileSizeLabel: string }>('/config'),
+};
+
 export const booksAPI = {
   upload: (formData: FormData) =>
     api.post<{ book: Book }>('/books/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  
+  createFromText: (title: string, author: string, text: string) =>
+    api.post<{ book: Book }>('/books/text', { title, author, text }),
   
   getAll: () =>
     api.get<{ books: Book[] }>('/books'),
